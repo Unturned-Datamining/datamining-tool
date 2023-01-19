@@ -102,10 +102,11 @@ internal class Program
 
     private static async Task<(bool isNewBuild, string? buildId)> CheckIsNewBuild(string basePath)
     {
-        var appdataPath = Path.Combine(basePath, "steamapps", "appmanifest_1110390.acf");
+        var id = IsDedicatedServer ? "1110390" : "304930";
+        var appdataPath = Path.Combine(basePath, "steamapps", $"appmanifest_{id}.acf");
         if (!File.Exists(appdataPath))
         {
-            throw new FileNotFoundException($"Required file is not found", "appmanifest_1110390.acf");
+            throw new FileNotFoundException($"Required file is not found", $"appmanifest_{id}.acf");
         }
 
         await using var file = File.OpenRead(appdataPath);
