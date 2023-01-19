@@ -16,11 +16,13 @@ namespace UnturnedDatamining;
 internal class Program
 {
     private static SteamCMDWrapper? SteamCMD { get; set; }
+    private static bool IsDedicatedServer { get; set; }
 
     private static async Task<int> Main(string[] args)
     {
         var installSteamCmd = !args.Any(x => x.Equals("--nosteam", StringComparison.OrdinalIgnoreCase));
         var force = args.Any(x => x.Equals("--force", StringComparison.OrdinalIgnoreCase));
+        IsDedicatedServer = !args.Any(x => x.Equals("--client", StringComparison.OrdinalIgnoreCase));
 
         var unturnedPath = Environment.CurrentDirectory;
         if (args.Length >= 1 && Directory.Exists(args[0]))
@@ -67,16 +69,26 @@ internal class Program
         await WriteCommit(unturnedPath, buildId ?? "???");
         await PrettyPrintEcon(unturnedPath);
 
-        var outputPath = Path.Combine(unturnedPath, "Assembly-CSharp");
-        if (Directory.Exists(outputPath))
+        // <string path, string fileName>
+        var decompileDlls = new Dictionary<string, string>
         {
-            Directory.Delete(outputPath, true);
-        }
-        else
+            { Path.Combine(unturnedPath, "Assembly-CSharp"), "Assembly-CSharp" }
+        };
+
+        foreach (var ctx in decompileDlls)
         {
-            Directory.CreateDirectory(outputPath);
+            if (Directory.Exists(ctx.Key))
+            {
+                Directory.Delete(ctx.Key, true);
+            }
+            else
+            {
+                Directory.CreateDirectory(ctx.Key);
+            }
+
+            await DecompileDll(unturnedPath, ctx.Value, ctx.Key);
         }
-        await DecompileDll(unturnedPath, outputPath);
+
         return 0;
     }
 
@@ -136,17 +148,17 @@ internal class Program
         }
     }
 
-    private static async Task DecompileDll(string unturnedPath, string outputPath)
+    private static async Task DecompileDll(string unturnedPath, string dllName, string outputPath)
     {
-        Console.WriteLine("Starting decompiling Unturned");
+        Console.WriteLine("Starting decompiling " + dllName);
 
         // On Linux dedicated server folder "Unturned_Data" changed to "Unturned_Headless_Data"
-        var dataFolderName = OperatingSystem.IsLinux() ? "Unturned_Headless_Data" : "Unturned_Data";
+        var dataFolderName = IsDedicatedServer ? "Unturned_Headless_Data" : "Unturned_Data";
         var refPath = Path.Combine(unturnedPath, dataFolderName, "Managed");
-        var dllPath = Path.Combine(refPath, "Assembly-CSharp.dll");
+        var dllPath = Path.Combine(refPath, dllName + ".dll");
 
         await using var stream = File.OpenRead(dllPath);
-        using var module = new PEFile("Assembly-CSharp", stream);
+        using var module = new PEFile(dllName, stream);
 
         var settings = GetSettings(module);
         var resolver = new UniversalAssemblyResolver(dllPath, true, module.DetectTargetFrameworkId());
@@ -189,7 +201,7 @@ internal class Program
             }
         });
 
-        Console.WriteLine("Decompiled Assembly-CSharp.dll successfully");
+        Console.WriteLine($"Decompiled {dllName}.dll successfully");
     }
 
     private static bool IncludeTypeWhenDecompilingProject(PEFile module, TypeDefinitionHandle type, DecompilerSettings settings)
