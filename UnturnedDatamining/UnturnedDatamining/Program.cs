@@ -8,6 +8,7 @@ using ICSharpCode.Decompiler.Util;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Reflection.Metadata;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using ValveKeyValue;
@@ -203,18 +204,40 @@ internal class Program
         });
 
         Console.WriteLine($"Decompiled {dllName}.dll successfully");
+        GenerateReadmeFiles(outputPath);
+    }
+
+    private static void GenerateReadmeFiles(string path)
+    {
+        var directories = Directory.GetDirectories(path);
+        Parallel.ForEach(directories, path =>
+        {
+            var directoryName = new DirectoryInfo(path).Name;
+            var files = Directory.GetFiles(path);
+            Array.Sort(files);
+
+            var sb = new StringBuilder();
+            sb.Append("# ").AppendLine(directoryName);
+            sb.Append("## ").AppendLine("Content");
+
+            foreach (var file in files)
+            {
+                var fileName = Path.GetFileName(file);
+
+                sb.Append("- [").Append(fileName).Append("](").Append(fileName).AppendLine(")");
+            }
+
+            var readmePath = Path.Combine(path, files.Length > 1000 ? "0README.md" : "README.md");
+            File.WriteAllText(readmePath, sb.ToString());
+        });
     }
 
     private static bool IncludeTypeWhenDecompilingProject(PEFile module, TypeDefinitionHandle type, DecompilerSettings settings)
     {
         var metadata = module.Metadata;
         var typeDef = metadata.GetTypeDefinition(type);
-        if (metadata.GetString(typeDef.Name) == "<Module>" || CSharpDecompiler.MemberIsHidden(module, type, settings))
-        {
-            return false;
-        }
-
-        return metadata.GetString(typeDef.Namespace) != "XamlGeneratedNamespace" || metadata.GetString(typeDef.Name) != "GeneratedInternalTypeHelper";
+        return metadata.GetString(typeDef.Name) != "<Module>" && !CSharpDecompiler.MemberIsHidden(module, type, settings)
+&& (metadata.GetString(typeDef.Namespace) != "XamlGeneratedNamespace" || metadata.GetString(typeDef.Name) != "GeneratedInternalTypeHelper");
     }
 
     private static DecompilerSettings GetSettings(PEFile module)
