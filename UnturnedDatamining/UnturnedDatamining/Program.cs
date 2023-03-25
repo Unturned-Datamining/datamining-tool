@@ -6,17 +6,13 @@ using ICSharpCode.Decompiler.Metadata;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.Util;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Reflection.Metadata;
-using System.Text;
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using ValveKeyValue;
 
 namespace UnturnedDatamining;
-internal class Program
+internal static class Program
 {
-    private static SteamCMDWrapper? SteamCMD { get; set; }
     private static bool IsDedicatedServer { get; set; }
 
     private static async Task<int> Main(string[] args)
@@ -44,19 +40,15 @@ internal class Program
             {
                 Directory.CreateDirectory(steamcmdPath);
             }
-            SteamCMD = new(steamcmdPath);
-            await SteamCMD.Install();
+            var steam = new SteamCMDWrapper(steamcmdPath);
+            await steam.InstallAsync();
 
             Console.WriteLine("Updating the game");
-
-            var process = Process.Start(SteamCMD.SteamCMDPath, $"+force_install_dir {unturnedPath} +login anonymous +app_update 1110390 -beta preview +quit");
-            await process.WaitForExitAsync();
-            Console.WriteLine("SteamCMD exited with code: " + process.ExitCode);
-            if (process.ExitCode != 0
-                && (!OperatingSystem.IsWindows() || process.ExitCode != 7))
+            var exitCode = await steam.UpdateGameAsync(unturnedPath);
+            // some error occurred with steam
+            if (exitCode is not 0)
             {
-                // error occurred with steamCMD
-                return process.ExitCode;
+                return exitCode;
             }
         }
 
@@ -68,12 +60,18 @@ internal class Program
         }
 
         await WriteCommit(unturnedPath, buildId ?? "???");
-        await PrettyPrintEcon(unturnedPath);
+        await EconInfoHelper.PrettyPrintEconAsync(unturnedPath);
 
         // <string path, string fileName>
         var decompileDlls = new Dictionary<string, string>
         {
-            { Path.Combine(unturnedPath, "Assembly-CSharp"), "Assembly-CSharp" }
+            { Path.Combine(unturnedPath, "Assembly-CSharp"), "Assembly-CSharp" },
+            { Path.Combine(unturnedPath, "SDG-HostBans-Runtime"), "SDG.HostBans.Runtime" },
+            { Path.Combine(unturnedPath, "SDG-NetPak-Runtime"), "SDG.NetPak.Runtime" },
+            { Path.Combine(unturnedPath, "SDG-NetTransport"), "SDG.NetTransport" },
+            { Path.Combine(unturnedPath, "Unturned-LiveConfig-Runtime"), "Unturned.LiveConfig.Runtime" },
+            { Path.Combine(unturnedPath, "UnityEx"), "UnityEx" },
+            { Path.Combine(unturnedPath, "SystemEx"), "SystemEx" },
         };
 
         foreach (var ctx in decompileDlls)
@@ -107,7 +105,7 @@ internal class Program
         var appdataPath = Path.Combine(basePath, "steamapps", $"appmanifest_{id}.acf");
         if (!File.Exists(appdataPath))
         {
-            throw new FileNotFoundException($"Required file is not found", $"appmanifest_{id}.acf");
+            throw new FileNotFoundException("Required file is not found", $"appmanifest_{id}.acf");
         }
 
         await using var file = File.OpenRead(appdataPath);
@@ -131,25 +129,6 @@ internal class Program
         return (false, null);
     }
 
-    private static async Task PrettyPrintEcon(string unturnedPath)
-    {
-        var econFile = Path.Combine(unturnedPath, "EconInfo.json");
-        string? json;
-        await using var stream = File.Open(econFile, FileMode.Open);
-
-        using (var jDoc = await JsonDocument.ParseAsync(stream))
-        {
-            json = JsonSerializer.Serialize(jDoc, new JsonSerializerOptions { WriteIndented = true });
-        }
-
-        if (!string.IsNullOrEmpty(json))
-        {
-            await using var streamWriter = new StreamWriter(stream);
-            streamWriter.BaseStream.Seek(0, SeekOrigin.Begin);
-            await streamWriter.WriteAsync(json);
-        }
-    }
-
     private static async Task DecompileDll(string unturnedPath, string dllName, string outputPath)
     {
         Console.WriteLine("Starting decompiling " + dllName);
@@ -162,7 +141,7 @@ internal class Program
         await using var stream = File.OpenRead(dllPath);
         using var module = new PEFile(dllName, stream);
 
-        var settings = GetSettings(module);
+        var settings = GetSettings();
         var resolver = new UniversalAssemblyResolver(dllPath, true, module.DetectTargetFrameworkId());
         resolver.AddSearchDirectory(refPath);
 
@@ -188,6 +167,7 @@ internal class Program
             }, StringComparer.OrdinalIgnoreCase).ToList();
 
         var ts = new DecompilerTypeSystem(module, resolver, settings);
+
         Parallel.ForEach(Partitioner.Create(files, loadBalance: true), (file, _) =>
         {
             using var writer = new StreamWriter(Path.Combine(outputPath, file.Key));
@@ -204,32 +184,7 @@ internal class Program
         });
 
         Console.WriteLine($"Decompiled {dllName}.dll successfully");
-        GenerateReadmeFiles(outputPath);
-    }
-
-    private static void GenerateReadmeFiles(string path)
-    {
-        var directories = Directory.GetDirectories(path);
-        Parallel.ForEach(directories, path =>
-        {
-            var directoryName = new DirectoryInfo(path).Name;
-            var files = Directory.GetFiles(path);
-            Array.Sort(files);
-
-            var sb = new StringBuilder();
-            sb.Append("# ").AppendLine(directoryName);
-            sb.Append("## ").AppendLine("Content");
-
-            foreach (var file in files)
-            {
-                var fileName = Path.GetFileName(file);
-
-                sb.Append("- [").Append(fileName).Append("](").Append(fileName).AppendLine(")");
-            }
-
-            var readmePath = Path.Combine(path, files.Length > 1000 ? "0README.md" : "README.md");
-            File.WriteAllText(readmePath, sb.ToString());
-        });
+        ReadmeGenerator.GenerateReadmeFiles(outputPath);
     }
 
     private static bool IncludeTypeWhenDecompilingProject(PEFile module, TypeDefinitionHandle type, DecompilerSettings settings)
@@ -237,19 +192,18 @@ internal class Program
         var metadata = module.Metadata;
         var typeDef = metadata.GetTypeDefinition(type);
         return metadata.GetString(typeDef.Name) != "<Module>" && !CSharpDecompiler.MemberIsHidden(module, type, settings)
-&& (metadata.GetString(typeDef.Namespace) != "XamlGeneratedNamespace" || metadata.GetString(typeDef.Name) != "GeneratedInternalTypeHelper");
+            && (metadata.GetString(typeDef.Namespace) != "XamlGeneratedNamespace" || metadata.GetString(typeDef.Name) != "GeneratedInternalTypeHelper");
     }
 
-    private static DecompilerSettings GetSettings(PEFile module)
+    private static DecompilerSettings GetSettings()
     {
         var settings = new DecompilerSettings(LanguageVersion.CSharp10_0)
         {
             ThrowOnAssemblyResolveErrors = true,
             RemoveDeadCode = true,
             RemoveDeadStores = true,
-            UseSdkStyleProjectFormat = WholeProjectDecompiler.CanUseSdkStyleProjectFormat(module),
             UseNestedDirectoriesForNamespaces = false,
-            FileScopedNamespaces = true
+            FileScopedNamespaces = true,
         };
         settings.CSharpFormattingOptions.IndentationString = new string(' ', 4);
         return settings;

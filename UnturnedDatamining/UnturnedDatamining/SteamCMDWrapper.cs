@@ -1,6 +1,7 @@
 ﻿using ICSharpCode.SharpZipLib.Core;
 using ICSharpCode.SharpZipLib.Tar;
 using ICSharpCode.SharpZipLib.Zip;
+using System.Diagnostics;
 using System.IO.Compression;
 
 namespace UnturnedDatamining;
@@ -15,7 +16,7 @@ internal class SteamCMDWrapper
         m_Path = path;
     }
 
-    public async Task Install()
+    public async Task InstallAsync()
     {
         var isWindows = OperatingSystem.IsWindows();
         var steamCmdPath = Path.Combine(m_Path, "steamcmd.") + (isWindows ? "exe" : "sh");
@@ -77,5 +78,25 @@ internal class SteamCMDWrapper
         }
 
         SteamCMDPath = Path.Combine(m_Path, "steamcmd." + (isWindows ? "exe" : "sh"));
+    }
+
+    /// <summary>
+    /// Update the game with running cmd
+    /// </summary>
+    /// <param name="path">Unturned path</param>
+    /// <returns>The code exit returned by SteamCMD</returns>
+    public async Task<int> UpdateGameAsync(string path)
+    {
+        var process = Process.Start(SteamCMDPath, $"+force_install_dir {path} +login anonymous +app_update 1110390 -beta preview +quit");
+        await process.WaitForExitAsync();
+        Console.WriteLine("SteamCMD exited with code: " + process.ExitCode);
+        if (process.ExitCode != 0
+            && (!OperatingSystem.IsWindows() || process.ExitCode != 7))
+        {
+            // error occurred with steamCMD
+            return process.ExitCode;
+        }
+
+        return 0;
     }
 }
