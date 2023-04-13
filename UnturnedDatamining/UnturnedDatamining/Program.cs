@@ -13,6 +13,18 @@ using ValveKeyValue;
 namespace UnturnedDatamining;
 internal static class Program
 {
+    private static readonly HashSet<string> s_DecompileDllNames = new()
+    {
+        "Assembly-CSharp",
+        "SDG.HostBans.Runtime",
+        "SDG.NetPak.Runtime",
+        "SDG.NetTransport",
+        "Unturned.LiveConfig.Runtime",
+        "UnityEx",
+        "SystemEx",
+        "UnturnedDat",
+    };
+
     private static bool IsDedicatedServer { get; set; }
 
     private static async Task<int> Main(string[] args)
@@ -62,30 +74,21 @@ internal static class Program
         await WriteCommit(unturnedPath, buildId ?? "???");
         await EconInfoHelper.PrettyPrintEconAsync(unturnedPath);
 
-        // <string path, string fileName>
-        var decompileDlls = new Dictionary<string, string>
+        foreach (var name in s_DecompileDllNames)
         {
-            { Path.Combine(unturnedPath, "Assembly-CSharp"), "Assembly-CSharp" },
-            { Path.Combine(unturnedPath, "SDG-HostBans-Runtime"), "SDG.HostBans.Runtime" },
-            { Path.Combine(unturnedPath, "SDG-NetPak-Runtime"), "SDG.NetPak.Runtime" },
-            { Path.Combine(unturnedPath, "SDG-NetTransport"), "SDG.NetTransport" },
-            { Path.Combine(unturnedPath, "Unturned-LiveConfig-Runtime"), "Unturned.LiveConfig.Runtime" },
-            { Path.Combine(unturnedPath, "UnityEx"), "UnityEx" },
-            { Path.Combine(unturnedPath, "SystemEx"), "SystemEx" },
-        };
+            var normalizedName = name.Replace('.', '-');
+            var outputPath = Path.Combine(unturnedPath, normalizedName);
 
-        foreach (var ctx in decompileDlls)
-        {
-            if (Directory.Exists(ctx.Key))
+            if (Directory.Exists(outputPath))
             {
-                Directory.Delete(ctx.Key, true);
+                Directory.Delete(outputPath, true);
             }
             else
             {
-                Directory.CreateDirectory(ctx.Key);
+                Directory.CreateDirectory(outputPath);
             }
 
-            await DecompileDll(unturnedPath, ctx.Value, ctx.Key);
+            await DecompileDll(unturnedPath, name, outputPath);
         }
 
         return 0;
