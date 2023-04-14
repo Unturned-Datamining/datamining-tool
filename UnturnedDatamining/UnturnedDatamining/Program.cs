@@ -23,6 +23,8 @@ internal static class Program
         "UnityEx",
         "SystemEx",
         "UnturnedDat",
+        "SDG.Glazier.Runtime",
+        "Unturned.LiveConfig.Runtime",
     };
 
     private static bool IsDedicatedServer { get; set; }
