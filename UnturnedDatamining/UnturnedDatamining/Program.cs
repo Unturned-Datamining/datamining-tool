@@ -23,6 +23,7 @@ internal static class Program
         IScenario scenario = scenarioName.ToLower() switch
         {
             "decompile" => new DownloadAndDecompileGame(),
+            "websites" => new DownloadDataFromWebsites(),
             _ => throw new Exception("Unknown scenario to start")
         };
 
