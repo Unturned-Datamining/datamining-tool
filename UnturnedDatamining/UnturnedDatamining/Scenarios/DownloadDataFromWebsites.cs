@@ -16,6 +16,6 @@ internal class DownloadDataFromWebsites : IScenario
 
     public async Task WriteCommitToFileAsync(string path, string fileName)
     {
-        await File.WriteAllTextAsync(Path.Combine(path, fileName), $"{DateTime.UtcNow:dd MMMM yyyy} - Updated `UnturnedLiveConfig.dat`");
+        await File.WriteAllTextAsync(Path.Combine(path, fileName), $"{DateTime.UtcNow:dd MMMM yyyy} - Updated UnturnedLiveConfig.dat");
     }
 }
