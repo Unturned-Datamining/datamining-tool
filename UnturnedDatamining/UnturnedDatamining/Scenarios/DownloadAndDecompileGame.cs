@@ -7,6 +7,7 @@ using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.Util;
 using System.Collections.Concurrent;
 using System.Reflection.Metadata;
+using System.Text;
 using System.Text.Json.Nodes;
 using ValveKeyValue;
 
@@ -63,6 +64,7 @@ internal class DownloadAndDecompileGame : IScenario
 
         m_BuildId = buildId ?? "???";
         await EconInfoHelper.PrettyPrintEconAsync(unturnedPath);
+        await ParseAndWriteUnityVersion(unturnedPath);
 
         foreach (var name in s_DecompileDllNames)
         {
@@ -93,6 +95,57 @@ internal class DownloadAndDecompileGame : IScenario
         var version = $"3.{node["Major_Version"]}.{node["Minor_Version"]}.{node["Patch_Version"]}";
 
         await File.WriteAllTextAsync(Path.Combine(path, fileName), $"{DateTime.UtcNow:dd MMMM yyyy} - Version {version} ({m_BuildId})");
+    }
+
+    private async Task ParseAndWriteUnityVersion(string basePath)
+    {
+        var unturnedDataDirName = IsDedicatedServer ? "Unturned_Headless_Data" : "Unturned_Data";
+        var globalGameManagersFilePath = Path.Combine(basePath, unturnedDataDirName, "globalgamemanagers");
+
+        if (File.Exists(globalGameManagersFilePath))
+        {
+            await using var file = File.OpenRead(globalGameManagersFilePath);
+            using var binaryReader = new BinaryReader(file);
+
+            // skip header
+            file.Seek(48, SeekOrigin.Begin);
+
+            var unityVersion = ReadStringZeroTerm(binaryReader);
+
+            // sanity checks
+            if (string.IsNullOrEmpty(unityVersion))
+            {
+                Console.WriteLine("Failed to read unity version, maybe format of file is changed?");
+                return;
+            }
+
+            // check if year is correct
+            if (!unityVersion.StartsWith("202"))
+            {
+                Console.WriteLine("Unity version doesn't start with '202', maybe format of file is changed?");
+                return;
+            }
+
+            var unityVersionFilePath = Path.Combine(basePath, ".unityversion");
+            await File.WriteAllTextAsync(unityVersionFilePath, unityVersion);
+        }
+
+        static string? ReadStringZeroTerm(BinaryReader reader)
+        {
+            // read string as "C"
+            Span<byte> bytes = stackalloc byte[32];
+            for (var i = 0; i < bytes.Length; i++)
+            {
+                var bt = reader.ReadByte();
+                if (bt == 0)
+                {
+                    return Encoding.UTF8.GetString(bytes[..i]);
+                }
+                bytes[i] = bt;
+            }
+
+            return null;
+        }
     }
 
     private async Task<(bool isNewBuild, string? buildId)> CheckIsNewBuild(string basePath)
