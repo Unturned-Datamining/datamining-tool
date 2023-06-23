@@ -19,7 +19,7 @@ internal class DownloadDataFromWebsites : IScenario
         using var client = new HttpClient();
 
         var tasks = s_DataToDownload
-            .Select(tuple => DownloadDataAndWriteToFileAsync(client, tuple.uri, unturnedPath, tuple.fileName);
+            .Select(tuple => DownloadDataAndWriteToFileAsync(client, tuple.uri, unturnedPath, tuple.fileName));
 
         var sb = new StringBuilder();
         foreach ((string fileName, bool isFileWritten) in await Task.WhenAll(tasks))
