@@ -6,7 +6,7 @@ internal class DownloadDataFromWebsites : IScenario
     private static readonly HashSet<(Uri uri, string fileName)> s_DataToDownload = new()
     {
         (new("https://smartlydressedgames.com/UnturnedLiveConfig.dat"), "UnturnedLiveConfig.dat"),
-        (new("https://smartlydressedgames.com/UnturnedHostBans/index.html"), "UnturnedHostBans.html"),
+        (new("https://smartlydressedgames.com/UnturnedHostBans/index.html"), "UnturnedHostBans.md"),
     };
 
     private string m_SummaryOfDownloadedFiles = null!;
