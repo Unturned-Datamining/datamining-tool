@@ -1,0 +1,51 @@
+name: 'Run datamining tool'
+description: 'Checkout datamining tool and installs dependencies'
+inputs:
+  tool-args:
+    description: 'Args for running datamining tool'
+    required: false
+  github_token:
+    description: 'GitHub token'
+    required: false
+  should-commit:
+    description: 'Should commit after successful run of tool'
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout tools branch
+      uses: actions/checkout@v3
+      with:
+        repository: Unturned-Datamining/datamining-tool
+        path: tools
+
+    - name: Setup Dotnet
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '7.x'
+
+    - name: Install dependencies
+      run: dotnet restore tools/UnturnedDatamining/
+      shell: bash
+
+    - name: Run tool
+      run: dotnet run --project ./tools/UnturnedDatamining/UnturnedDatamining/UnturnedDatamining.csproj -c Release --no-restore -- ${{ inputs.tool-args }}
+      shell: bash
+
+    - name: Generate Commit Message
+      id: generate_commit_message
+      run: |
+        msg=$( cat .commit )
+        echo "message=$msg" >> "$GITHUB_OUTPUT"
+      shell: bash
+
+    - name: Push commit
+      if: ${{ inputs.should-commit == 'true' }}
+      run: |
+        git config --global user.email "diffoz@users.noreply.github.com"
+        git config --global user.name "DiFFoZ"
+
+        git add .
+        git commit -m "${{ steps.generate_commit_message.outputs.message }}"
+        git push
+      shell: bash
+      
