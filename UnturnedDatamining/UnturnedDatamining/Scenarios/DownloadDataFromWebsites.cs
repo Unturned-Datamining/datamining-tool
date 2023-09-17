@@ -30,6 +30,12 @@ internal class DownloadDataFromWebsites : IScenario
             }
         }
 
+        // check if stringBuilder was appended atleast once
+        if (sb.Length == 0)
+        {
+            return false;
+        }
+
         sb.Remove(sb.Length - 1, 1); // remove last ','
         m_SummaryOfDownloadedFiles = sb.ToString();
 

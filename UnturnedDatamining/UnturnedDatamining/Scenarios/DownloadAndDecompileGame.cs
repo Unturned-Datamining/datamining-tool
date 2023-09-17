@@ -212,7 +212,7 @@ internal class DownloadAndDecompileGame : IScenario
         });
 
         Console.WriteLine($"Decompiled {dllName}.dll successfully");
-        ReadmeGenerator.GenerateReadmeFiles(outputPath);
+        await ReadmeGenerator.GenerateReadmeFilesAsync(outputPath);
     }
 
     private static bool IncludeTypeWhenDecompilingProject(PEFile module, TypeDefinitionHandle type, DecompilerSettings settings)

@@ -3,10 +3,10 @@
 namespace UnturnedDatamining;
 internal static class ReadmeGenerator
 {
-    public static void GenerateReadmeFiles(string path)
+    public static async Task GenerateReadmeFilesAsync(string path)
     {
         var directories = Directory.GetDirectories(path);
-        Parallel.ForEach(directories, path =>
+        await Parallel.ForEachAsync(directories, async (path, token) =>
         {
             var directoryName = new DirectoryInfo(path).Name;
             var files = Directory.GetFiles(path);
@@ -24,7 +24,7 @@ internal static class ReadmeGenerator
             }
 
             var readmePath = Path.Combine(path, files.Length > 1000 ? "0README.md" : "README.md");
-            File.WriteAllText(readmePath, sb.ToString());
+            await File.WriteAllTextAsync(readmePath, sb.ToString(), token);
         });
     }
 }
