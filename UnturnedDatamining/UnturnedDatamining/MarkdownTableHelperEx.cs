@@ -26,7 +26,7 @@
 
 namespace UnturnedDatamining;
 /// <summary>
-/// Ex: removed sort by name
+/// Ex: removed sort by name, fixes '|', '<', '>' in values breaks table
 /// </summary>
 internal static class MarkdownTableHelperEx
 {
@@ -38,7 +38,7 @@ internal static class MarkdownTableHelperEx
             = properties.Select(p => new { p.Name, GetValue = (Func<object, object?>)p.GetValue, Type = p.PropertyType });
 
         var maxColumnValues = source
-            .Select(x => gettables.Select(p => p.GetValue(x)?.ToString()?.Length ?? 0))
+            .Select(x => gettables.Select(p => GetValueSafely(p.GetValue, x).Length))
             .Union(new[] { gettables.Select(p => p.Name.Length) }) // Include header in column sizes
             .Aggregate(
                 new int[gettables.Count()].AsEnumerable(),
@@ -78,9 +78,19 @@ internal static class MarkdownTableHelperEx
                 }.Union(
                 source
                 .Select(s =>
-                    "| " + string.Join(" | ", gettables.Select((n, i) => (n.GetValue(s)?.ToString() ?? "").PadRight(maxColumnValues[i]))) + " |"));
+                    "| " + string.Join(" | ", gettables.Select((n, i) => GetValueSafely(n.GetValue, s).PadRight(maxColumnValues[i]))) + " |"));
 
         return lines
             .Aggregate((p, c) => p + Environment.NewLine + c);
+    }
+
+    private static string GetValueSafely(Func<object, object?> func, object instance)
+    {
+        var value = func(instance)?.ToString() ?? string.Empty;
+
+        return value
+            .Replace("|", "&#124;")
+            .Replace("<", "&lt;")
+            .Replace(">", "&gt;");
     }
 }
