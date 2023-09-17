@@ -101,7 +101,8 @@ internal partial class DownloadDataFromWebsites : IScenario
                 && filters.steamIds.Count is 0;
 
             var pathToFile = Path.Combine(unturnedPath, fileName);
-            if (filtersEmpty && File.Exists(pathToFile))
+            var fileExists = File.Exists(pathToFile);
+            if (filtersEmpty && fileExists)
             {
                 // looks like new version of filters was out that we don't understand
                 return (fileName, false);
@@ -131,15 +132,21 @@ internal partial class DownloadDataFromWebsites : IScenario
             var steamIds = filters.steamIds.Select(x => new HostBanSteamId(x.steamId.ToString(), x.flags));
             sb.AppendLine(steamIds.ToMarkdownTable());
 
-            var value = sb.ToString();
+            var markdownTable = sb.ToString();
 
-            if (await File.ReadAllTextAsync(pathToFile) == value)
+            if (!fileExists)
+            {
+                await File.WriteAllTextAsync(pathToFile, markdownTable);
+                return new(fileName, true);
+            }
+
+            if (await File.ReadAllTextAsync(pathToFile) == markdownTable)
             {
                 // content is same, ignoring
                 return new(fileName, false);
             }
 
-            await File.WriteAllTextAsync(pathToFile, value);
+            await File.WriteAllTextAsync(pathToFile, markdownTable);
             return new(fileName, true);
         }
 
