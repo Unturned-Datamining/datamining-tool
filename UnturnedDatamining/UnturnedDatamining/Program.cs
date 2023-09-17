@@ -6,7 +6,8 @@ internal static class Program
     private static async Task<int> Main(string[] args)
     {
 #if DEBUG
-        args = new[] { @"C:\Program Files (x86)\Steam\steamapps\common\Unturned", "decompile", "--client", "--nosteam", "--force" };
+        if (args.Length == 0)
+            args = new[] { @"C:\Program Files (x86)\Steam\steamapps\common\Unturned", "decompile", "--client", "--nosteam", "--force" };
 #endif
 
         if (args.Length < 2)

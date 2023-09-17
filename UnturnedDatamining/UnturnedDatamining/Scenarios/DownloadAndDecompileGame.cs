@@ -31,29 +31,8 @@ internal class DownloadAndDecompileGame : IScenario
 
     public async Task<bool> StartAsync(string unturnedPath, string[] args)
     {
-        var installSteamCmd = !args.Any(x => x.Equals("--nosteam", StringComparison.OrdinalIgnoreCase));
         var force = args.Any(x => x.Equals("--force", StringComparison.OrdinalIgnoreCase));
         IsDedicatedServer = !args.Any(x => x.Equals("--client", StringComparison.OrdinalIgnoreCase));
-
-        if (installSteamCmd)
-        {
-            var steamcmdPath = Path.Combine(unturnedPath, "SteamCMD");
-            if (!Directory.Exists(steamcmdPath))
-            {
-                Directory.CreateDirectory(steamcmdPath);
-            }
-            var steam = new SteamCMDWrapper(steamcmdPath);
-            await steam.InstallAsync();
-
-            Console.WriteLine("Updating the game");
-            var exitCode = await steam.UpdateGameAsync(unturnedPath);
-            // some error occurred with steam
-            if (exitCode is not 0)
-            {
-                Console.WriteLine("Steam exited with error code: " + exitCode.ToString());
-                return false;
-            }
-        }
 
         var (isNewBuild, buildId) = await CheckIsNewBuild(unturnedPath);
         if (!isNewBuild && !force)
