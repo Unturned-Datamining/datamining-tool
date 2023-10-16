@@ -104,6 +104,7 @@ internal partial class DownloadDataFromWebsites : IScenario
             var fileExists = File.Exists(pathToFile);
             if (filtersEmpty && fileExists)
             {
+                Console.WriteLine("New version of filters.bin was out");
                 // looks like new version of filters was out that we don't understand
                 return (fileName, false);
             }
