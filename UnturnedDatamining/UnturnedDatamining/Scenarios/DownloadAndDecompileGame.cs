@@ -17,12 +17,13 @@ internal class DownloadAndDecompileGame : IScenario
     private static readonly HashSet<string> s_DecompileDllNames = new()
     {
         "Assembly-CSharp",
+        "SDG.Glazier.Runtime",
         "SDG.HostBans.Runtime",
         "SDG.NetPak.Runtime",
         "SDG.NetTransport",
-        "Unturned.LiveConfig.Runtime",
-        "UnityEx",
         "SystemEx",
+        "UnityEx",
+        "Unturned.LiveConfig.Runtime",
         "UnturnedDat",
     };
 
