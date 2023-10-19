@@ -155,7 +155,8 @@ internal class DownloadAndDecompileGame : IScenario
             await File.WriteAllTextAsync(currentBuildIdPath, buildId);
             return (true, buildId);
         }
-        return (false, null);
+
+        return (false, buildId);
     }
 
     private async Task DecompileDll(string unturnedPath, string dllName, string outputPath)
