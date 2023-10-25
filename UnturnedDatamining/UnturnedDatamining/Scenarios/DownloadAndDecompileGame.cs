@@ -166,10 +166,9 @@ internal class DownloadAndDecompileGame : IScenario
         // On Linux dedicated server folder "Unturned_Data" changed to "Unturned_Headless_Data"
         var dataFolderName = IsDedicatedServer ? "Unturned_Headless_Data" : "Unturned_Data";
         var refPath = Path.Combine(unturnedPath, dataFolderName, "Managed");
-        var dllPath = Path.Combine(refPath, dllName + ".dll");
+        var dllPath = Path.GetFullPath(Path.Combine(refPath, dllName + ".dll"));
 
-        await using var stream = File.OpenRead(dllPath);
-        using var module = new PEFile(dllName, stream);
+        using var module = new PEFile(dllPath);
 
         var settings = GetSettings();
         var resolver = new UniversalAssemblyResolver(dllPath, true, module.DetectTargetFrameworkId());
@@ -234,6 +233,7 @@ internal class DownloadAndDecompileGame : IScenario
             RemoveDeadStores = true,
             UseNestedDirectoriesForNamespaces = false,
             FileScopedNamespaces = true,
+            ShowXmlDocumentation = true,
         };
         settings.CSharpFormattingOptions.IndentationString = new string(' ', 4);
         return settings;

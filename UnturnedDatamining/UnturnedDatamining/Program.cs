@@ -7,7 +7,7 @@ internal static class Program
     {
 #if DEBUG
         if (args.Length == 0)
-            args = new[] { @"C:\Program Files (x86)\Steam\steamapps\common\Unturned", "websites", "--client", "--nosteam", "--force" };
+            args = new[] { @"C:\Program Files (x86)\Steam\steamapps\common\Unturned", "decompile", "--client", "--force" };
 #endif
 
         if (args.Length < 2)
