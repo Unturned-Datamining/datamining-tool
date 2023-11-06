@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ICSharpCode.Decompiler" Version="8.1.1.7464" />
+    <PackageReference Include="ICSharpCode.Decompiler" Version="8.2.0.7535" />
     <PackageReference Include="OpenMod.Unturned.Redist" Version="3.23.12-preview" />
     <PackageReference Include="ValveKeyValue" Version="0.9.0.267" />
   </ItemGroup>
