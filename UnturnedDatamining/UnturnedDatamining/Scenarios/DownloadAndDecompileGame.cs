@@ -29,10 +29,11 @@ internal class DownloadAndDecompileGame : IScenario
 
     private string m_BuildId = "???";
     private bool IsDedicatedServer { get; set; }
+    private bool IsForced { get; set; }
 
     public async Task<bool> StartAsync(string unturnedPath, string[] args)
     {
-        var force = args.Any(x => x.Equals("--force", StringComparison.OrdinalIgnoreCase));
+        var force = IsForced = args.Any(x => x.Equals("--force", StringComparison.OrdinalIgnoreCase));
         IsDedicatedServer = !args.Any(x => x.Equals("--client", StringComparison.OrdinalIgnoreCase));
 
         var (isNewBuild, buildId) = await CheckIsNewBuild(unturnedPath);
@@ -74,7 +75,9 @@ internal class DownloadAndDecompileGame : IScenario
         var node = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(path, "Status.json")))!["Game"]!;
         var version = $"3.{node["Major_Version"]}.{node["Minor_Version"]}.{node["Patch_Version"]}";
 
-        await File.WriteAllTextAsync(Path.Combine(path, fileName), $"{DateTime.UtcNow:dd MMMM yyyy} - Version {version} ({m_BuildId})");
+        var forcedNote = IsForced ? " [Forced]" : "";
+
+        await File.WriteAllTextAsync(Path.Combine(path, fileName), $"{DateTime.UtcNow:dd MMMM yyyy} - Version {version} ({m_BuildId})" + forcedNote);
     }
 
     private async Task ParseAndWriteUnityVersion(string basePath)
