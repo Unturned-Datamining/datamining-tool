@@ -137,7 +137,7 @@ internal class DownloadAndDecompileGame : IScenario
 
         var possiblePath = new string[]
         {
-            Path.Combine([basePath, "steamapps", $"app_manifest_{id}.acf"]), // inside of Unturned folder
+            Path.Combine([basePath, "steamapps", $"appmanifest_{id}.acf"]), // inside of Unturned folder
             Path.Combine([basePath, "../../", $"appmanifest_{id}.acf"]), // outside of unturned folder
         };
 
