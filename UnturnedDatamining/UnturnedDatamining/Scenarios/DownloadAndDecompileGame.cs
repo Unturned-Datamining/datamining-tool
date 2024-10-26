@@ -134,8 +134,15 @@ internal class DownloadAndDecompileGame : IScenario
     private async Task<(bool isNewBuild, string? buildId)> CheckIsNewBuild(string basePath)
     {
         var id = IsDedicatedServer ? "1110390" : "304930";
-        var appdataPath = Path.Combine(basePath, "steamapps", $"appmanifest_{id}.acf");
-        if (!File.Exists(appdataPath))
+
+        var possiblePath = new string[]
+        {
+            Path.Combine([basePath, "steamapps", $"app_manifest_{id}.acf"]), // inside of Unturned folder
+            Path.Combine([basePath, "../../", $"appmanifest_{id}.acf"]), // outside of unturned folder
+        };
+
+        var appdataPath = possiblePath.FirstOrDefault(File.Exists);
+        if (appdataPath == null)
         {
             throw new FileNotFoundException("Required file is not found", $"appmanifest_{id}.acf");
         }
