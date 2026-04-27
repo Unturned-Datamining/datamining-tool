@@ -42,8 +42,7 @@ internal static partial class EconInfoHelper
         using var reader = new BinaryReader(stream);
 
         int version = reader.ReadInt32();
-
-        if (version != 1)
+        if (version > 3)
         {
             Console.WriteLine("Version format of EconInfo.bin was changed");
             return false;
@@ -67,6 +66,19 @@ internal static partial class EconInfoHelper
                 quality = (UnturnedEconInfo.EQuality)reader.ReadInt32(),
                 econ_type = reader.ReadInt32()
             };
+
+            if (version >= 2)
+            {
+                econInfo.creationTimeUtc = DateTime.FromBinary(reader.ReadInt64());
+            }
+            if (version >= 3)
+            {
+                econInfo.isEligibleForPromotion = reader.ReadBoolean();
+            }
+            else
+            {
+                econInfo.isEligibleForPromotion = true;
+            }
 
             econInfos.TryAdd(econInfo.itemdefid, econInfo);
         }
