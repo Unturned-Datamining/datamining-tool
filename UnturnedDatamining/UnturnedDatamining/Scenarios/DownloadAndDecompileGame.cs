@@ -103,9 +103,9 @@ internal class DownloadAndDecompileGame : IScenario
             }
 
             // check if year is correct
-            if (!unityVersion.StartsWith("202"))
+            if (!unityVersion.StartsWith("202") && !unityVersion.StartsWith("600"))
             {
-                Console.WriteLine("Unity version doesn't start with '202', maybe format of file is changed?");
+                Console.WriteLine("Unity version doesn't start with '202' or '600', maybe format of file is changed?");
                 return;
             }
 
